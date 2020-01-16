@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, globalShortcut } = require('electron')
 
 let win
 
@@ -12,7 +12,9 @@ function createWindow () {
         autoHideMenuBar: true,
         webPreferences: {
             nodeIntegration: true,
-            devTools: true
+            nodeIntegrationInWorker: true,
+            devTools: true,
+            preload: true,
         }
     })
 
@@ -22,6 +24,34 @@ function createWindow () {
         app.quit()
         return;
     }
+
+    win.webContents.addListener("did-fail-load", () => {
+        console.log("ERROR: Failed to load. URL: " + url);
+        app.quit();
+        return;
+    });
+
+    win.webContents.on("dom-ready", () => {
+        win.webContents.executeJavaScript(`
+        // Restore vertical scroll position
+        let pos = sessionStorage.getItem(document.URL);
+        console.log(pos);
+        if ( !(pos === undefined) ){
+            scrollTo(0, pos);
+        }
+
+        // Save vertical scroll position
+        document.addEventListener("scroll", () => {
+            sessionStorage.setItem(document.URL, document.documentElement.scrollTop);
+        });
+        `);
+    });
+
+    globalShortcut.register("Alt+Left", () => {win.webContents.goBack();});
+    globalShortcut.register("Alt+Right", () => {win.webContents.goForward();});
+    globalShortcut.register("Ctrl+Shift+b", () => {win.webContents.goBack();});
+    globalShortcut.register("Ctrl+Shift+f", () => {win.webContents.goForward();});
+
     win.loadURL(url);
 
     // Emitted when the window is closed.
