@@ -1,8 +1,30 @@
-const { app, BrowserWindow, globalShortcut } = require('electron')
+const { app, BrowserWindow, globalShortcut } = require('electron');
+const { Menu, MenuItem } = require('electron');
+const prompt = require('electron-prompt');
 
 let win
 
-function createWindow () {
+function urlPrompt(isError) {
+    let title = "Where to go?"
+    if (isError) {
+        title = "[URL OPEN ERROR] " + title;
+    }
+    prompt({
+        title: title,
+        label: "URL",
+        value: "https://google.com/",
+        inputAttrs: {
+            type: "url"
+        },
+        type: "input"
+    }).then((url) => {
+        if (!(url === null)) {
+            win.loadURL(url);
+        }
+    }).catch(console.error);
+}
+
+function createWindow() {
     let width = 800;
     let height = 600;
 
@@ -18,18 +40,23 @@ function createWindow () {
         }
     })
 
-    let url = process.argv[process.argv.length-1];
-    if ( !url.startsWith("http://") && !url.startsWith("https://") ){
-        console.log("ERROR: URL must be specified with command-line argument");
-        app.quit()
-        return;
-    }
-
-    win.webContents.addListener("did-fail-load", () => {
-        console.log("ERROR: Failed to load. URL: " + url);
-        app.quit();
-        return;
+    const menu = Menu.getApplicationMenu();
+    const mi = new MenuItem({
+        label: "Go to",
+        enabled: true,
+        visible: true,
+        type: "submenu",
+        submenu: [new MenuItem({
+            label: "Go to URL",
+            accelarator: "CommanddOrControl+Shift+o",
+            click() {
+                urlPrompt(false);
+            },
+            registerAccelerator: true
+        })]
     });
+    menu.insert(0, mi);
+    Menu.setApplicationMenu(menu);
 
     win.webContents.on("dom-ready", () => {
         win.webContents.executeJavaScript(`
@@ -47,12 +74,19 @@ function createWindow () {
         `);
     });
 
-    globalShortcut.register("Alt+Left", () => {win.webContents.goBack();});
-    globalShortcut.register("Alt+Right", () => {win.webContents.goForward();});
-    globalShortcut.register("Ctrl+Shift+b", () => {win.webContents.goBack();});
-    globalShortcut.register("Ctrl+Shift+f", () => {win.webContents.goForward();});
+    globalShortcut.register("Alt+Left", () => { win.webContents.goBack(); });
+    globalShortcut.register("Alt+Right", () => { win.webContents.goForward(); });
+    globalShortcut.register("Ctrl+Shift+b", () => { win.webContents.goBack(); });
+    globalShortcut.register("Ctrl+Shift+f", () => { win.webContents.goForward(); });
+    globalShortcut.register("Ctrl+Shift+o", () => { urlPrompt(false); });
 
-    win.loadURL(url);
+    win.webContents.addListener("did-fail-load", () => {
+        console.log("did-fail-load");
+        urlPrompt(true);
+    });
+
+    win.loadURL("about:blank");
+    urlPrompt(false);
 
     // Emitted when the window is closed.
     win.on('closed', () => {

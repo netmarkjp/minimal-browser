@@ -19,5 +19,8 @@
   "homepage": "https://github.com/netmarkjp/miinmal-browser#readme",
   "devDependencies": {
     "electron": "^7.1.9"
+  },
+  "dependencies": {
+    "electron-prompt": "^1.5.0"
   }
 }
